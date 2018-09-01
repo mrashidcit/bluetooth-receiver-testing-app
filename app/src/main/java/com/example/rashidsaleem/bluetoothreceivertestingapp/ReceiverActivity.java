@@ -1,11 +1,21 @@
 package com.example.rashidsaleem.bluetoothreceivertestingapp;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Message;
 import android.os.ParcelUuid;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -15,26 +25,38 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.rashidsaleem.bluetoothreceivertestingapp.util.AcceptThread;
+import com.example.rashidsaleem.bluetoothreceivertestingapp.util.ConnectThread;
+
 import java.io.IOException;
 import java.util.UUID;
-
-import static com.example.rashidsaleem.bluetoothreceivertestingapp.MainActivity.EXTRA_ADDRESS;
-import static com.example.rashidsaleem.bluetoothreceivertestingapp.MainActivity.EXTRA_DEVICE_NAME;
 
 public class ReceiverActivity extends AppCompatActivity implements View.OnClickListener {
 
     private static final String TAG = ReceiverActivity.class.getSimpleName();
     public static final UUID myUUID = UUID.fromString("00001112-0000-1000-8000-00805f9b34fb");
+    private static final int DISCOVERY_REQUEST_CODE = 1001;
+    private static final int REQUEST_ENABLE_BT = 1002;
+    private static final int ACCESS_FINE_LOCATION_REQ_CODE = 1003;
+    private static final int REQUEST_PERMISSION_BLUETOOTH_PRIVILEGED = 1004;
+    public static final java.lang.String COMMAND = "command";
 
     private AlertDialog.Builder dialogBuilder;
     private AlertDialog progressDialog;
+    private Button btnStartServerView;
+
     BluetoothAdapter bluetoothAdapter = null;
     BluetoothSocket bluetoothSocket = null;
+    BluetoothDevice bluetoothDevice = null;
     private boolean isBtConnected = false;
+    private AcceptThread acceptThread;
+    private ConnectThread connectThread;
 
     private TextView tvDeviceNameView, tvCommandView;
-    private Button btnSendDataView;
+    private Button btnSendDataView, btnConnectView;
     private String deviceAddress, deviceName;
+
+    private Handler acceptHandler;
 
 
     @Override
@@ -42,35 +64,212 @@ public class ReceiverActivity extends AppCompatActivity implements View.OnClickL
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_receiver);
         Intent intent = getIntent();
-        deviceName = intent.getStringExtra(EXTRA_DEVICE_NAME);
-        deviceAddress = intent.getStringExtra(EXTRA_ADDRESS);
+//        deviceName = intent.getStringExtra(EXTRA_DEVICE_NAME);
+//        deviceAddress = intent.getStringExtra(EXTRA_ADDRESS);
 
 //        deviceName = "Hol-U19";
 //        deviceAddress = "24:7F:3C:08:31:A3";
 
+        deviceName = "QMobile E600";
+        deviceAddress = "09:D3:43:3D:62:61";
 
-        new ConnectBt().execute(); // Call the class to connect
+        String command = "a";
+
+        byte buffer[] = new byte[10];
+
+        buffer = command.getBytes();
+
+        char chr;
+        // for each byte in the buffer
+        for (byte b :buffer) {
+
+            // convert byte to String
+            chr = (char) b;
+
+            Log.d(TAG, "chr: " + chr);
+        }
+
+
+
+//        Log.d(TAG, "commandBytes: " + command.getBytes());
+
+
+
+//        new ConnectBt().execute(); // Call the class to connect
+        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        bluetoothDevice = bluetoothAdapter.getRemoteDevice(deviceAddress);
+
 
         // Setting View Elements
         tvDeviceNameView = (TextView) findViewById(R.id.tv_device_name);
         tvCommandView = (TextView) findViewById(R.id.tv_command);
         btnSendDataView = (Button) findViewById(R.id.btn_send_data);
+        btnStartServerView = (Button) findViewById(R.id.btn_start_server);
+        btnConnectView = (Button) findViewById(R.id.btn_connect);
 
         // Setting Click Listeners
         btnSendDataView.setOnClickListener(this);
+        btnStartServerView.setOnClickListener(this);
+        btnConnectView.setOnClickListener(this);
 
         // Setting View Values
         tvDeviceNameView.setText(deviceName);
+
+        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        if (bluetoothAdapter != null) {
+            Log.d(TAG, "Bluetooth is Avaialble");
+
+            if (!bluetoothAdapter.isEnabled()) {
+                Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+
+            } else {
+//                discoverBtDevices();
+
+            }
+
+        }
+
+        connectThread = new ConnectThread(null, bluetoothDevice, myUUID);
+
+//        btnStartServerView.performClick();
+    } // end onCreate();
+
+    @SuppressLint("HandlerLeak")
+    private final Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+//            super.handleMessage(msg);
+
+            Bundle bundle =  msg.getData();
+
+            String command = bundle.getString(COMMAND);
+
+            Log.d(TAG, "command: " + command);
+
+        }
+    };
+
+    private void discoverBtDevices() {
+
+        Log.d(TAG, "Searching Bluetooth Devices ...");
+        IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+        registerReceiver(mReceiver, filter);
+
+        checkBtPermission();
+
+        if (bluetoothAdapter.isDiscovering()) {
+            bluetoothAdapter.cancelDiscovery();
+
+            if (bluetoothAdapter.startDiscovery()) {
+                Log.d(TAG, "Discovery Started ...");
+            } else {
+                Log.d(TAG, "startDiscovery Failed ...");
+            }
+        } else {
+
+            if (bluetoothAdapter.startDiscovery()) {
+                Log.d(TAG, "Discovery Started ...");
+            } else {
+                Log.d(TAG, "startDiscovery Failed ...");
+            }
+
+        }
+
+
+    }
+
+    // Create a BroadcastReceiver for ACTION_FOUND.
+    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Log.d(TAG, "... onReceive() ...");
+
+            String action = intent.getAction();
+            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+                // Discovery has found a device. Get the BluetoothDevice
+                // object and its info from the Intent.
+                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                String deviceName = device.getName();
+                String deviceAddress = device.getAddress();
+                Log.d(TAG, "Device Found: " + deviceName + " : " + deviceAddress);
+
+
+            } else {
+                Log.d(TAG, " No Device Found ...");
+
+            }
+        }
+
+
+    };
+
+    @Override
+    public void onClick(View v) {
+        int id = v.getId();
+
+        switch (id) {
+            case R.id.btn_send_data:
+
+
+
+                sendCommandtoBt("1");
+                break;
+
+
+            case R.id.btn_start_server:
+                Log.d(TAG, "Starting Server");
+//                Toast.makeText(this, "Starting Server ...", Toast.LENGTH_SHORT).show();
+
+                acceptThread = new AcceptThread(bluetoothAdapter, tvCommandView, myUUID);
+                acceptThread.run();
+
+
+                break;
+
+            case R.id.btn_connect:
+
+                //                discoverBtDevices();
+
+
+                if (bluetoothAdapter.isDiscovering()) {
+                    bluetoothAdapter.cancelDiscovery();
+                }
+                checkBtPermission();
+                connectThread.connect(bluetoothDevice, myUUID);
+
+
+                break;
+
+
+        }
 
 
     }
 
     @Override
-    public void onClick(View v) {
-        sendCommandtoBt("1");
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+
+        if (resultCode == RESULT_OK) {
+
+            Log.d(TAG, "Now Bluetooth is turned on...");
+
+        }
+
+
+//        super.onActivityResult(requestCode, resultCode, data);
+//        boolean isDiscoverable = resultCode > 0;
+//        int discoverableDuration = resultCode;
+//        if (isDiscoverable) {
+//            UUID uuid = myUUID;
+//            String name = "bluetooth-server";
+
+//            final BluetoothServerSocket btServer = blu
+
+//        }
+
 
     }
-
 
     // UI thread This class allows you to perform background operations
     // and publish results on the UI thread without having to manipulate
@@ -122,7 +321,7 @@ public class ReceiverActivity extends AppCompatActivity implements View.OnClickL
                     String name = bluetoothSocket.getRemoteDevice().getName();
 
                     String name1 = bluetoothSocket.getRemoteDevice().getName();
-                    int connectionType  = 0;
+                    int connectionType = 0;
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
                         connectionType = bluetoothSocket.getConnectionType();
                     }
@@ -172,12 +371,31 @@ public class ReceiverActivity extends AppCompatActivity implements View.OnClickL
         try {
 
 
-            bluetoothSocket.getOutputStream().write(command.getBytes());
+              connectThread.getOutputStream().write(command.getBytes());
             Toast.makeText(this, "Send Success ", Toast.LENGTH_SHORT).show();
 
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private void checkBtPermission() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            int permissionCheck = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION);
+            permissionCheck += checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION);
+            if (permissionCheck != 0) {
+                requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, ACCESS_FINE_LOCATION_REQ_CODE);
+
+            } else {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_PRIVILEGED) != PackageManager.PERMISSION_GRANTED) {
+
+                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.BLUETOOTH_PRIVILEGED}, REQUEST_PERMISSION_BLUETOOTH_PRIVILEGED);
+
+                }
+            }
+
+        }
+
     }
 
 
@@ -188,11 +406,14 @@ public class ReceiverActivity extends AppCompatActivity implements View.OnClickL
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        try {
-            bluetoothSocket.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+
+//        unregisterReceiver(mReceiver);
+
+//        try {
+//            bluetoothSocket.close();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
 
 
     }

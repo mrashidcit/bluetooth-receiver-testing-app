@@ -69,6 +69,27 @@
         android:layout_marginRight="66dp"
         android:layout_marginTop="78dp"
         android:text="Send Data" />
+
+    <Button
+        android:id="@+id/btn_start_server"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/btn_send_data"
+        android:layout_marginTop="53dp"
+        android:layout_toLeftOf="@+id/tv_device_name"
+        android:layout_toStartOf="@+id/tv_device_name"
+        android:text="Start Server" />
+
+    <Button
+        android:id="@+id/btn_connect"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/btn_start_server"
+        android:layout_marginLeft="25dp"
+        android:layout_marginStart="25dp"
+        android:layout_toEndOf="@+id/tv_command"
+        android:layout_toRightOf="@+id/tv_command"
+        android:text="Connect" />
 </RelativeLayout>
 
 
