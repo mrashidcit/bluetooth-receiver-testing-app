@@ -31,7 +31,6 @@
         android:layout_marginStart="11dp"
         android:layout_toEndOf="@+id/textView"
         android:layout_toRightOf="@+id/textView"
-        android:text="QMobile Infinity"
         android:textSize="18sp"
         android:textStyle="bold" />
 
@@ -42,20 +41,24 @@
         android:layout_alignLeft="@+id/textView"
         android:layout_alignStart="@+id/textView"
         android:layout_below="@+id/textView"
-        android:layout_marginTop="103dp"
-        android:text="Receving Command:" />
+        android:layout_marginLeft="27dp"
+        android:layout_marginStart="27dp"
+        android:layout_marginTop="41dp"
+        android:text="Receving Command:"
+        android:visibility="visible" />
 
     <TextView
         android:id="@+id/tv_command"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignTop="@+id/textView3"
-        android:layout_marginLeft="24dp"
-        android:layout_marginStart="24dp"
-        android:layout_toEndOf="@+id/textView3"
-        android:layout_toRightOf="@+id/textView3"
+        android:layout_marginLeft="25dp"
+        android:layout_marginStart="25dp"
+        android:layout_toEndOf="@+id/btn_start_server"
+        android:layout_toRightOf="@+id/btn_start_server"
         android:textSize="18sp"
         android:textStyle="bold"
+        android:visibility="visible"
         tools:text="a" />
 
     <Button
@@ -68,28 +71,30 @@
         android:layout_marginEnd="66dp"
         android:layout_marginRight="66dp"
         android:layout_marginTop="78dp"
-        android:text="Send Data" />
+        android:text="Send Data"
+        android:visibility="invisible" />
 
     <Button
         android:id="@+id/btn_start_server"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_alignEnd="@+id/textView3"
+        android:layout_alignRight="@+id/textView3"
         android:layout_below="@+id/btn_send_data"
-        android:layout_marginTop="53dp"
-        android:layout_toLeftOf="@+id/tv_device_name"
-        android:layout_toStartOf="@+id/tv_device_name"
-        android:text="Start Server" />
+        android:layout_marginTop="62dp"
+        android:text="Start Server"
+        android:textAllCaps="false" />
 
     <Button
         android:id="@+id/btn_connect"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignTop="@+id/btn_start_server"
-        android:layout_marginLeft="25dp"
-        android:layout_marginStart="25dp"
-        android:layout_toEndOf="@+id/tv_command"
-        android:layout_toRightOf="@+id/tv_command"
-        android:text="Connect" />
+        android:layout_marginTop="22dp"
+        android:layout_toEndOf="@+id/btn_send_data"
+        android:layout_toRightOf="@+id/btn_send_data"
+        android:text="Connect"
+        android:visibility="invisible" />
 </RelativeLayout>
 
 

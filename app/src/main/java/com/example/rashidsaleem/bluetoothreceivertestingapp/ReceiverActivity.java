@@ -34,12 +34,13 @@ import java.util.UUID;
 public class ReceiverActivity extends AppCompatActivity implements View.OnClickListener {
 
     private static final String TAG = ReceiverActivity.class.getSimpleName();
-    public static final UUID myUUID = UUID.fromString("00001112-0000-1000-8000-00805f9b34fb");
+    public static final UUID myUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
     private static final int DISCOVERY_REQUEST_CODE = 1001;
     private static final int REQUEST_ENABLE_BT = 1002;
     private static final int ACCESS_FINE_LOCATION_REQ_CODE = 1003;
     private static final int REQUEST_PERMISSION_BLUETOOTH_PRIVILEGED = 1004;
     public static final java.lang.String COMMAND = "command";
+    private static final int REQUEST_BLUETOOTH_ENABLE = 1005;
 
     private AlertDialog.Builder dialogBuilder;
     private AlertDialog progressDialog;
@@ -52,7 +53,7 @@ public class ReceiverActivity extends AppCompatActivity implements View.OnClickL
     private AcceptThread acceptThread;
     private ConnectThread connectThread;
 
-    private TextView tvDeviceNameView, tvCommandView;
+    private TextView tvconnectedDeviceNameView, tvCommandView;
     private Button btnSendDataView, btnConnectView;
     private String deviceAddress, deviceName;
 
@@ -81,7 +82,7 @@ public class ReceiverActivity extends AppCompatActivity implements View.OnClickL
 
         char chr;
         // for each byte in the buffer
-        for (byte b :buffer) {
+        for (byte b : buffer) {
 
             // convert byte to String
             chr = (char) b;
@@ -90,9 +91,7 @@ public class ReceiverActivity extends AppCompatActivity implements View.OnClickL
         }
 
 
-
 //        Log.d(TAG, "commandBytes: " + command.getBytes());
-
 
 
 //        new ConnectBt().execute(); // Call the class to connect
@@ -101,7 +100,7 @@ public class ReceiverActivity extends AppCompatActivity implements View.OnClickL
 
 
         // Setting View Elements
-        tvDeviceNameView = (TextView) findViewById(R.id.tv_device_name);
+        tvconnectedDeviceNameView = (TextView) findViewById(R.id.tv_device_name);
         tvCommandView = (TextView) findViewById(R.id.tv_command);
         btnSendDataView = (Button) findViewById(R.id.btn_send_data);
         btnStartServerView = (Button) findViewById(R.id.btn_start_server);
@@ -113,7 +112,7 @@ public class ReceiverActivity extends AppCompatActivity implements View.OnClickL
         btnConnectView.setOnClickListener(this);
 
         // Setting View Values
-        tvDeviceNameView.setText(deviceName);
+//        tvconnectedDeviceNameView.setText(deviceName);
 
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (bluetoothAdapter != null) {
@@ -141,7 +140,7 @@ public class ReceiverActivity extends AppCompatActivity implements View.OnClickL
         public void handleMessage(Message msg) {
 //            super.handleMessage(msg);
 
-            Bundle bundle =  msg.getData();
+            Bundle bundle = msg.getData();
 
             String command = bundle.getString(COMMAND);
 
@@ -212,7 +211,6 @@ public class ReceiverActivity extends AppCompatActivity implements View.OnClickL
             case R.id.btn_send_data:
 
 
-
                 sendCommandtoBt("1");
                 break;
 
@@ -221,8 +219,26 @@ public class ReceiverActivity extends AppCompatActivity implements View.OnClickL
                 Log.d(TAG, "Starting Server");
 //                Toast.makeText(this, "Starting Server ...", Toast.LENGTH_SHORT).show();
 
-                acceptThread = new AcceptThread(bluetoothAdapter, tvCommandView, myUUID);
-                acceptThread.run();
+                if (!bluetoothAdapter.isEnabled()) {
+                    Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                    startActivityForResult(intent, REQUEST_BLUETOOTH_ENABLE);
+
+                } else {
+
+                    acceptThread = new AcceptThread(bluetoothAdapter, tvCommandView, tvconnectedDeviceNameView, btnStartServerView, myUUID);
+                    acceptThread.start();
+
+                    String msg = "Restart Server";
+
+                    if (btnStartServerView.getText().toString().equals(msg)) {
+                        Toast.makeText(this, "Restarting Bluetooth Server.....", Toast.LENGTH_SHORT).show();
+                    }
+
+                    btnStartServerView.setText(msg);
+//                acceptThread.run();
+
+
+                }
 
 
                 break;
@@ -247,13 +263,21 @@ public class ReceiverActivity extends AppCompatActivity implements View.OnClickL
 
     }
 
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 
-        if (resultCode == RESULT_OK) {
+        switch (requestCode) {
 
-            Log.d(TAG, "Now Bluetooth is turned on...");
+            case REQUEST_BLUETOOTH_ENABLE:
 
+                if (resultCode == RESULT_OK) {
+                    Log.d(TAG, "Now Bluetooth is turned on...");
+
+
+                }
+
+                break;
         }
 
 
@@ -371,7 +395,7 @@ public class ReceiverActivity extends AppCompatActivity implements View.OnClickL
         try {
 
 
-              connectThread.getOutputStream().write(command.getBytes());
+            connectThread.getOutputStream().write(command.getBytes());
             Toast.makeText(this, "Send Success ", Toast.LENGTH_SHORT).show();
 
         } catch (IOException e) {

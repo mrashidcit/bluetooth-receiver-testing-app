@@ -9,6 +9,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
+import android.widget.Button;
 import android.widget.TextView;
 
 import com.example.rashidsaleem.bluetoothreceivertestingapp.ReceiverActivity;
@@ -28,14 +29,19 @@ import static com.example.rashidsaleem.bluetoothreceivertestingapp.ReceiverActiv
 public class AcceptThread extends Thread {
     private static final String TAG = ReceiverActivity.class.getSimpleName();
     public static final UUID myUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+    private static final String CLIENT_CONNECTED = "client_connected";
+    private static final java.lang.String DEVICE_NAME = "device_name";
 
     private final BluetoothServerSocket mServerSocket;
     private BluetoothAdapter mBluetoothAdapter;
     private final Handler mHandler;
     private final TextView tvCommandView;
+    private final TextView tvConnectedDeviceNameView;
+    private final Button btnStartServerView;
 
 
-    public AcceptThread(BluetoothAdapter btAdapter, TextView commandView, UUID uuid) {
+    public AcceptThread(BluetoothAdapter btAdapter, TextView commandView,
+                        TextView connectedDeviceNameView, final Button btnstartServerView , UUID uuid) {
         // Use a temporary object that is later assigned to mmServerSocket
         // because mmServerSocket is final.
         BluetoothServerSocket tmp = null;
@@ -54,6 +60,8 @@ public class AcceptThread extends Thread {
 
         this.mServerSocket = tmp;
         this.tvCommandView = commandView;
+        this.tvConnectedDeviceNameView = connectedDeviceNameView;
+        this.btnStartServerView = btnstartServerView;
 
         this.mHandler = new Handler(Looper.myLooper()) {
 
@@ -61,10 +69,26 @@ public class AcceptThread extends Thread {
             public void handleMessage(Message msg) {
 //                super.handleMessage(msg);
 
-//                tvCommandView.setText("Hello");
                 Bundle bundle = msg.getData();
-                String command = bundle.getString(COMMAND);
-                Log.d(TAG, "command: " + command);
+                String clientConntect = bundle.getString(CLIENT_CONNECTED);
+                if (clientConntect != null) {
+                    String deviceName = bundle.getString(DEVICE_NAME);
+                    tvConnectedDeviceNameView.setText(deviceName);
+
+                } else {
+
+                    String command = bundle.getString(COMMAND);
+
+                    if (command.equals("z")) { // Means Client Has Disconnected so Restart Server
+                        btnstartServerView.performClick();
+                    } else {
+                        Log.d(TAG, "command: " + command);
+                        tvCommandView.setText(command);
+                    }
+
+
+                }
+
 
 
             }
@@ -103,17 +127,26 @@ public class AcceptThread extends Thread {
             }
 
             if (bluetoothSocket != null) {
-            // A connection was accepted. Perform work associated with
-            // the connection in a separate thread.
+                // A connection was accepted. Perform work associated with
+                // the connection in a separate thread.
                 Log.d(TAG, bluetoothSocket.getRemoteDevice().getName() + " connected to My Server");
 
-                manageMyConnectedSocket(bluetoothSocket);
+                Message message = mHandler.obtainMessage();
+                Bundle bundle = new Bundle();
+                bundle.putString(CLIENT_CONNECTED, "connected");
+                bundle.putString(DEVICE_NAME, bluetoothSocket.getRemoteDevice().getName());
+                message.setData(bundle);
+                message.sendToTarget();
 
                 try {
                     mServerSocket.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+                manageMyConnectedSocket(bluetoothSocket);
+
+                break;
+
 
             }
 
@@ -133,7 +166,7 @@ public class AcceptThread extends Thread {
         }
 
         final InputStream finalInputStream = inputStream;
-        Thread inputStreamThread =   new Thread() {
+        Thread inputStreamThread = new Thread() {
             @Override
             public void run() {
 //                super.run();
@@ -144,14 +177,17 @@ public class AcceptThread extends Thread {
                 while (true) {
                     // Read form the InputStream
                     try {
-                        numBytes  = finalInputStream.read(buffer);
+                        numBytes = finalInputStream.read(buffer);
                         if (numBytes > 0) {
                             char ch = 0;
-                            for (byte b : buffer) {
 
-                                ch =  (char) b;
+                            ch = (char) buffer[0];
 
-                            }
+//                            for (byte b : buffer) {
+//
+//                                ch =  (char) b;
+//
+//                            }
                             String command = ch + "";
 
                             Message message = mHandler.obtainMessage();
@@ -159,7 +195,6 @@ public class AcceptThread extends Thread {
                             bundle.putString(COMMAND, command);
                             message.setData(bundle);
                             message.sendToTarget();
-
 
 
                         }
